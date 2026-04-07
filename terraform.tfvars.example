@@ -1,0 +1,6 @@
+project_id          = "your-gcp-project-id"
+region              = "me-central1"
+github_owner        = "MaherWasel"
+firebase_project_id = "your-gcp-project-id"
+redis_tier          = "BASIC"
+redis_memory_size_gb = 1
