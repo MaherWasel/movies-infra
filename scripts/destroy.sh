@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-PROJECT="project-e005e972-f26f-4d68-b51"
+# Config via environment variables (Factor 3)
+PROJECT="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID environment variable}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 

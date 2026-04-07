@@ -51,6 +51,8 @@ done
 ### Step 3 — Deploy everything
 
 ```bash
+export GCP_PROJECT_ID=project-e005e972-f26f-4d68-b51
+
 cd movies-infra
 ./scripts/deploy.sh
 ```
@@ -72,6 +74,8 @@ Open http://localhost:5173 and sign in with Google.
 ## Teardown Everything
 
 ```bash
+export GCP_PROJECT_ID=project-e005e972-f26f-4d68-b51
+
 cd movies-infra
 ./scripts/destroy.sh
 ```
@@ -129,6 +133,8 @@ This section is for the live demonstration where you must delete the entire clou
 ### Part A — Destroy Everything
 
 ```bash
+export GCP_PROJECT_ID=project-e005e972-f26f-4d68-b51
+
 cd movies-infra
 ./scripts/destroy.sh
 ```
@@ -145,6 +151,7 @@ git clone https://github.com/MaherWasel/movies-infra.git
 git clone https://github.com/MaherWasel/movies-frontend.git
 
 # Deploy everything with one script
+export GCP_PROJECT_ID=project-e005e972-f26f-4d68-b51
 cd movies-infra
 ./scripts/deploy.sh
 

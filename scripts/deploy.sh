@@ -1,14 +1,16 @@
 #!/bin/bash
 set -e
 
-PROJECT="project-e005e972-f26f-4d68-b51"
-REGION="me-central1"
+# Config via environment variables (Factor 3)
+PROJECT="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID environment variable}"
+REGION="${GCP_REGION:-me-central1}"
+GITHUB_OWNER="${GITHUB_OWNER:-MaherWasel}"
 REGISTRY="$REGION-docker.pkg.dev/$PROJECT/movies-docker"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "=== Movies App — Full Deploy ==="
-echo "Project: $PROJECT"
+echo "Project: $PROJECT | Region: $REGION"
 echo ""
 
 # 1. State bucket
@@ -21,7 +23,7 @@ cd "$ROOT_DIR"
 cat > terraform.tfvars << EOF
 project_id           = "$PROJECT"
 region               = "$REGION"
-github_owner         = "MaherWasel"
+github_owner         = "$GITHUB_OWNER"
 firebase_project_id  = "$PROJECT"
 redis_tier           = "BASIC"
 redis_memory_size_gb = 1
