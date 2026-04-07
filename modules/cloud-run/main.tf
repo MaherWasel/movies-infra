@@ -323,6 +323,53 @@ resource "google_cloud_run_v2_service_iam_member" "review_public" {
   member   = "allUsers"
 }
 
+# Cloud Run Job — one-off seed process (Factor 12: Admin Processes)
+resource "google_cloud_run_v2_job" "seed_movies" {
+  project  = var.project_id
+  name     = "seed-movies"
+  location = var.region
+
+  template {
+    template {
+      service_account = var.movie_service_sa_email
+
+      vpc_access {
+        connector = "projects/${var.project_id}/locations/${var.region}/connectors/${var.vpc_connector_name}"
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
+
+      containers {
+        image   = var.movie_service_image
+        command = ["node", "src/seed.js"]
+
+        env {
+          name  = "NODE_ENV"
+          value = "production"
+        }
+        env {
+          name = "GCP_PROJECT_ID"
+          value_source {
+            secret_key_ref {
+              secret  = var.firebase_secret_name
+              version = "latest"
+            }
+          }
+        }
+
+        resources {
+          limits = {
+            cpu    = "1"
+            memory = "512Mi"
+          }
+        }
+      }
+
+      max_retries = 1
+      timeout     = "300s"
+    }
+  }
+}
+
 output "movie_service_url" {
   value = google_cloud_run_v2_service.movie_service.uri
 }

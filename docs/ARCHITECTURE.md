@@ -1,45 +1,119 @@
 # System Architecture
 
+## High-Level Overview
+
+```
+                    ┌─────────────┐
+                    │  Client App │  (React SPA)
+                    │  Firebase   │  Google Sign-In → JWT
+                    └──────┬──────┘
+                           │ HTTPS + Bearer JWT
+                    ┌──────▼──────┐
+                    │ API Gateway │  (europe-west1)
+                    │ JWT Validate│  OpenAPI 2.0 spec
+                    └──┬──────┬───┘
+              ┌────────▼┐  ┌─▼────────┐
+              │  Movie  │  │  Review  │
+              │ Service │  │ Service  │  (Cloud Run, me-central1)
+              └────┬────┘  └──┬───┬───┘
+                   │          │   │ Pub/Sub publish
+              ┌────▼──────────▼┐  │
+              │   Firestore    │  ├───────────────┐
+              │  (us-central1) │  │               │
+              └────────────────┘  │   ┌───────────▼───────┐
+                                  │   │ review-events topic│
+              ┌────────────────┐  │   └───────────┬───────┘
+              │  Memorystore   │  │               │
+              │  Redis 7.0     │◄─┘   ┌───────────▼───────┐
+              │  (me-central1) │      │ review-events-sub  │
+              └────────────────┘      └───────────┬───────┘
+                                                  │
+                                      ┌───────────▼───────┐
+                                      │   Review Worker   │
+                                      │   (Cloud Run)     │
+                                      │   Rating recalc   │
+                                      └───────────────────┘
+```
+
 ## Components
 
 ### Client Layer
-- **Mobile/Web App** — Authenticates via Firebase Auth (Google Sign-In), receives a JWT, sends it with every API request.
+- **React SPA** (`movies-frontend`) — Authenticates via Firebase Auth (Google Sign-In), receives a JWT, sends it with every API request as `Authorization: Bearer <token>`.
 
 ### API Gateway Layer
-- **Cloud API Gateway** — Single entry point for all API traffic. Validates Firebase JWTs using Google's public keys before routing requests. Defined via OpenAPI 2.0 spec with `x-google-backend` extensions pointing to Cloud Run services.
+- **Cloud API Gateway** (europe-west1) — Single entry point for all API traffic. Validates Firebase JWTs using Google's public keys before routing requests. Defined via OpenAPI 2.0 spec with `x-google-backend` extensions pointing to Cloud Run services.
 
 ### Service Layer
-- **Movie Service** (Cloud Run) — Handles movie listing and retrieval. Seeds Firestore with initial movie data on startup if empty. Validates cached tokens via Redis middleware.
-- **Review Service** (Cloud Run) — Handles review CRUD and like/dislike operations. Publishes `REVIEW_CREATED` and `REVIEW_DELETED` events to Pub/Sub on mutations.
-- **Review Worker** (Cloud Run) — Subscribes to the `review-events-sub` Pub/Sub subscription. Recalculates movie aggregate ratings asynchronously when reviews are added or deleted.
+
+| Service | Runtime | Purpose |
+|---------|---------|---------|
+| **Movie Service** | Cloud Run (me-central1) | Movie listing and retrieval. Reads from Firestore `movies` collection. |
+| **Review Service** | Cloud Run (me-central1) | Review CRUD, like/dislike operations. Publishes events to Pub/Sub. |
+| **Review Worker** | Cloud Run (me-central1, min 1 instance) | Subscribes to Pub/Sub. Recalculates movie aggregate ratings asynchronously. |
+| **Seed Job** | Cloud Run Job | One-off admin process to seed initial movie data into Firestore. |
+
+All services validate JWT tokens via Firebase Admin SDK with Redis caching (defense in depth — API Gateway validates first).
 
 ### Data Layer
-- **Firestore** — Primary database with three collections:
-  - `movies` — Pre-seeded movie data with aggregate fields (rating, reviewCount, likeCount, dislikeCount)
-  - `reviews` — User-submitted reviews linked to movies
-  - `likes` — Like/dislike records keyed as `{userId}_{movieId}` to enforce uniqueness
-- **Memorystore (Redis)** — Caches validated Firebase JWT tokens. Key format: `token:<last-16-chars>`. TTL: 1 hour. Prevents redundant Firebase token verification on repeated requests.
+
+**Firestore** (us-central1) — Primary database with three collections:
+
+| Collection | Key Schema | Purpose |
+|-----------|------------|---------|
+| `movies` | Auto-generated ID | Movie data + aggregate fields (rating, reviewCount, likeCount, dislikeCount) |
+| `reviews` | Auto-generated ID | User reviews linked to movies via `movieId` field |
+| `likes` | `{userId}_{movieId}` | Like/dislike records. Composite key enforces one vote per user per movie. |
+
+**Memorystore Redis 7.0** (me-central1) — Caches validated Firebase JWT tokens. Key format: `token:<last-16-chars-of-JWT>`. TTL: 1 hour. Prevents redundant Firebase token verification on repeated requests. Cache miss falls back gracefully to Firebase Admin SDK.
 
 ### Messaging Layer
-- **Cloud Pub/Sub** — Topic: `review-events`. Subscription: `review-events-sub`. Carries review lifecycle events for async processing (rating aggregation). Retry policy with exponential backoff (10s–600s).
+
+**Cloud Pub/Sub**:
+- Topic: `review-events`
+- Subscription: `review-events-sub` (pull-based)
+- Events: `REVIEW_CREATED`, `REVIEW_DELETED`
+- Retry policy: exponential backoff, 10s–600s
+- No expiration
+
+When a review is created or deleted, the Review Service publishes an event. The Worker consumes it and recalculates the movie's average rating asynchronously, decoupling the write path from the aggregation logic.
 
 ### Scheduling Layer
-- **Cloud Scheduler** — Runs a nightly job (2:00 AM Riyadh time) that hits the Movie Service health endpoint. Verifies service availability and can be extended for seed validation or rating re-aggregation.
+
+**Cloud Scheduler** — Nightly job at 2:00 AM (Asia/Riyadh) that pings the Movie Service health endpoint. Verifies service availability and can be extended for periodic maintenance tasks. Authenticates via OIDC with a dedicated service account.
 
 ### CI/CD Pipeline
-- **Cloud Build** — Two triggers (one per service repo) fire on push to `main`. Each trigger: builds Docker image → pushes to Artifact Registry → deploys to Cloud Run. No manual steps.
-- **Artifact Registry** — Single Docker repository (`movies-docker`) stores all service images tagged with commit SHA and `latest`.
+
+**GitHub Actions** (per service repo):
+1. Triggered on push to `main`
+2. Authenticates to GCP via **Workload Identity Federation** (keyless — no service account keys)
+3. Builds Docker image and tags with git SHA + `latest`
+4. Pushes to **Artifact Registry** (`movies-docker` repository)
+5. Updates Cloud Run service with new image
+
+**Artifact Registry** (me-central1) — Single Docker repository `movies-docker` stores all service images.
 
 ### Security & IAM
-- **Secret Manager** — Stores Firebase project ID and Redis connection details. Referenced by service accounts.
-- **Service Accounts** — One per service, each with least-privilege roles:
-  - `movie-service-sa`: Firestore read/write, Secret Manager access
-  - `review-service-sa`: Firestore read/write, Pub/Sub publisher, Secret Manager access
-  - `review-worker-sa`: Firestore read/write, Pub/Sub subscriber
-  - `scheduler-sa`: Cloud Run invoker
-  - `cloud-build-sa`: Cloud Run admin, Artifact Registry writer
 
-## Data Flow
+**Secret Manager** — Stores 5 secrets:
+- `firebase-project-id`
+- `redis-host`, `redis-port`
+- `pubsub-topic`, `pubsub-subscription`
+
+All injected into Cloud Run containers at runtime via `value_source.secret_key_ref`.
+
+**Service Accounts** — One per service, least-privilege:
+
+| Account | Roles |
+|---------|-------|
+| `movie-service-sa` | Firestore user, Secret Manager accessor |
+| `review-service-sa` | Firestore user, Pub/Sub publisher, Secret Manager accessor |
+| `review-worker-sa` | Firestore user, Pub/Sub subscriber, Secret Manager accessor |
+| `scheduler-sa` | Cloud Run invoker |
+| `github-actions-sa` | Cloud Run admin, Artifact Registry writer, SA user |
+
+**Workload Identity Federation** — GitHub Actions authenticates via OIDC tokens. Pool scoped to `repository_owner=='MaherWasel'` only.
+
+## Data Flows
 
 ### Read Flow (Get Movies)
 ```
@@ -48,29 +122,31 @@ Client → API Gateway (JWT validation) → Movie Service → Firestore → Resp
 
 ### Write Flow (Add Review)
 ```
-Client → API Gateway (JWT validation) → Review Service → Firestore (write review)
-                                                        → Pub/Sub (publish event)
-                                                              ↓
-                                                        Review Worker → Firestore (recalculate rating)
+Client → API Gateway (JWT validation) → Review Service
+  ├── Firestore (write review)
+  └── Pub/Sub (publish REVIEW_CREATED)
+        └── Worker → Firestore (recalculate movie rating)
 ```
 
 ### Auth Flow
 ```
 Client → Firebase Auth (Google Sign-In) → JWT issued
 Client → API Gateway (JWT validated against Google public keys)
-       → Cloud Run (JWT validated against Redis cache or Firebase Admin SDK)
+       → Cloud Run service (JWT validated against Redis cache or Firebase Admin SDK)
        → Redis (cache validated token for 1 hour)
 ```
 
 ### Like/Dislike Flow
 ```
 Client → API Gateway → Review Service → Firestore Transaction:
-                                          1. Check existing like doc
-                                          2. Create/update like record
-                                          3. Update movie counters atomically
+  1. Check existing like doc ({userId}_{movieId})
+  2. Create/update like record
+  3. Update movie likeCount/dislikeCount atomically
 ```
 
 ## Network Architecture
+
 - Cloud Run services connect to Memorystore Redis via a **VPC Connector** (`movies-vpc-connector`, CIDR `10.8.0.0/28`).
-- Redis is on the default VPC network, not publicly accessible.
-- Cloud Run services accept public traffic but JWT validation is enforced at the API Gateway level and again at the service level (defense in depth).
+- Redis is on the default VPC network — **not publicly accessible**.
+- Cloud Run services accept public traffic but JWT validation is enforced at two layers (API Gateway + service middleware) — defense in depth.
+- API Gateway is deployed in `europe-west1` (closest supported region); services are in `me-central1`.

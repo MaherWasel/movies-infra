@@ -158,6 +158,18 @@ All endpoints (except `/health`) require a Firebase Auth JWT in the `Authorizati
 
 ---
 
+## Admin Operations
+
+### Seed Movies (Cloud Run Job)
+- **Method:** CLI command (not an HTTP endpoint)
+- **Command:**
+```bash
+gcloud run jobs execute seed-movies --region=me-central1 --project=YOUR_PROJECT_ID
+```
+- **Behavior:** Inserts 10 seed movies into the `movies` Firestore collection if it is empty. Idempotent — safe to re-run.
+
+---
+
 ## Error Responses
 
 All errors follow this format:
