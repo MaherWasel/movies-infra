@@ -28,7 +28,7 @@ resource "google_api_gateway_api_config" "movies" {
   provider      = google-beta
   project       = var.project_id
   api           = google_api_gateway_api.movies.api_id
-  api_config_id = "movies-api-config-v1"
+  api_config_id = "movies-api-config-v2"
 
   openapi_documents {
     document {
