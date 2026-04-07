@@ -8,6 +8,10 @@ schemes:
 produces:
   - application/json
 
+x-google-endpoints:
+  - name: "movies-api.endpoints.${firebase_project_id}.cloud.goog"
+    allowCors: true
+
 securityDefinitions:
   firebase:
     authorizationUrl: ""
@@ -29,6 +33,12 @@ paths:
       responses:
         200:
           description: OK
+    options:
+      summary: CORS preflight
+      operationId: corsMovies
+      responses:
+        200:
+          description: OK
 
   /movies/{movieId}:
     get:
@@ -44,6 +54,17 @@ paths:
       x-google-backend:
         address: ${movie_service_url}/movies
         path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        200:
+          description: OK
+    options:
+      summary: CORS preflight
+      operationId: corsMovie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          type: string
       responses:
         200:
           description: OK
@@ -65,6 +86,17 @@ paths:
       responses:
         201:
           description: Created
+    options:
+      summary: CORS preflight
+      operationId: corsLike
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: OK
 
   /movies/{movieId}/dislike:
     post:
@@ -83,6 +115,17 @@ paths:
       responses:
         201:
           description: Created
+    options:
+      summary: CORS preflight
+      operationId: corsDislike
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: OK
 
   /reviews:
     get:
@@ -110,6 +153,12 @@ paths:
       responses:
         201:
           description: Created
+    options:
+      summary: CORS preflight
+      operationId: corsReviews
+      responses:
+        200:
+          description: OK
 
   /reviews/{reviewId}:
     delete:
@@ -125,6 +174,17 @@ paths:
       x-google-backend:
         address: ${review_service_url}/reviews
         path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        200:
+          description: OK
+    options:
+      summary: CORS preflight
+      operationId: corsReview
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          type: string
       responses:
         200:
           description: OK
