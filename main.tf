@@ -112,12 +112,13 @@ module "scheduler" {
   depends_on = [module.cloud_run, module.iam]
 }
 
-# Cloud Build triggers
-module "cloud_build" {
-  source       = "./modules/cloud-build"
-  project_id   = var.project_id
-  region       = var.region
-  github_owner = var.github_owner
-
-  depends_on = [module.apis, module.artifact_registry]
-}
+# Cloud Build triggers — requires manual GitHub App connection first.
+# After connecting GitHub in Cloud Build console, uncomment this block.
+# module "cloud_build" {
+#   source       = "./modules/cloud-build"
+#   project_id   = var.project_id
+#   region       = var.region
+#   github_owner = var.github_owner
+#
+#   depends_on = [module.apis, module.artifact_registry]
+# }

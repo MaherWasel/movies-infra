@@ -2,7 +2,7 @@ swagger: "2.0"
 info:
   title: Movies Review API
   version: "1.0.0"
-host: ""
+host: "movies-api.endpoints.${firebase_project_id}.cloud.goog"
 schemes:
   - https
 produces:

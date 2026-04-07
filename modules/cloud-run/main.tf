@@ -92,10 +92,6 @@ resource "google_cloud_run_v2_service" "movie_service" {
       }
 
       env {
-        name  = "PORT"
-        value = "8080"
-      }
-      env {
         name  = "NODE_ENV"
         value = "production"
       }
@@ -181,10 +177,6 @@ resource "google_cloud_run_v2_service" "review_service" {
         container_port = 8080
       }
 
-      env {
-        name  = "PORT"
-        value = "8080"
-      }
       env {
         name  = "NODE_ENV"
         value = "production"
@@ -302,7 +294,7 @@ resource "google_cloud_run_v2_service" "review_worker" {
       resources {
         limits = {
           cpu    = "1"
-          memory = "256Mi"
+          memory = "512Mi"
         }
       }
     }

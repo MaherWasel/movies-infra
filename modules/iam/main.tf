@@ -71,10 +71,16 @@ resource "google_project_iam_member" "review_secrets" {
   member  = "serviceAccount:${google_service_account.review_service.email}"
 }
 
-# Worker: Firestore + Pub/Sub subscriber
+# Worker: Firestore + Pub/Sub subscriber + Secret Manager
 resource "google_project_iam_member" "worker_firestore" {
   project = var.project_id
   role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.worker.email}"
+}
+
+resource "google_project_iam_member" "worker_secrets" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.worker.email}"
 }
 
