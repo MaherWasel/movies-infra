@@ -161,6 +161,106 @@ done
 
 ---
 
+## Live Demo: Destroy and Restore
+
+This section is for the live demonstration where you must delete the entire cloud environment and restore it to a fully functional state within minutes.
+
+### Part A — Destroy Everything (run during demo)
+
+```bash
+export PROJECT=project-e005e972-f26f-4d68-b51
+
+# 1. Destroy all GCP infrastructure
+cd movies-infra
+terraform destroy -auto-approve
+
+# 2. Delete Terraform state
+gsutil rm -r gs://movies-infra-tfstate
+
+# 3. Delete all local repos
+cd ..
+rm -rf movies-movie-service movies-review-service movies-infra movies-frontend
+```
+
+At this point: no Cloud Run services, no Redis, no Pub/Sub, no API Gateway, no code on disk. Everything is gone.
+
+### Part B — Restore Everything (~10-15 minutes)
+
+```bash
+export PROJECT=project-e005e972-f26f-4d68-b51
+
+# 1. Clone all repos from GitHub
+git clone https://github.com/MaherWasel/movies-movie-service.git
+git clone https://github.com/MaherWasel/movies-review-service.git
+git clone https://github.com/MaherWasel/movies-infra.git
+git clone https://github.com/MaherWasel/movies-frontend.git
+
+# 2. Re-create Terraform state bucket
+gsutil mb -l me-central1 gs://movies-infra-tfstate
+
+# 3. Configure Terraform
+cd movies-infra
+cat > terraform.tfvars << 'EOF'
+project_id           = "project-e005e972-f26f-4d68-b51"
+region               = "me-central1"
+github_owner         = "MaherWasel"
+firebase_project_id  = "project-e005e972-f26f-4d68-b51"
+redis_tier           = "BASIC"
+redis_memory_size_gb = 1
+EOF
+
+# 4. Create Artifact Registry first (images need a place to go)
+terraform init
+terraform apply -target=module.apis -target=module.artifact_registry -auto-approve
+
+# 5. Build and push all Docker images
+cd ../movies-movie-service
+gcloud builds submit --tag me-central1-docker.pkg.dev/$PROJECT/movies-docker/movie-service:latest \
+  --region=me-central1 --project=$PROJECT
+
+cd ../movies-review-service
+gcloud builds submit --tag me-central1-docker.pkg.dev/$PROJECT/movies-docker/review-service:latest \
+  --region=me-central1 --project=$PROJECT
+gcloud builds submit --config=cloudbuild-worker.yaml --region=me-central1 --project=$PROJECT
+
+# 6. Deploy all infrastructure
+cd ../movies-infra
+terraform import module.firestore.google_firestore_database.main \
+  "projects/$PROJECT/databases/(default)" 2>/dev/null || true
+terraform apply -auto-approve
+
+# 7. Seed movie data
+gcloud run jobs execute seed-movies --region=me-central1 --project=$PROJECT
+
+# 8. Run frontend
+cd ../movies-frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 — the app is fully functional again. Sign in with Google, browse movies, write reviews, like/dislike.
+
+### What gets restored:
+- 3 Cloud Run services (movie-service, review-service, review-worker)
+- Memorystore Redis with VPC Connector
+- Cloud Pub/Sub topic + subscription
+- API Gateway with JWT validation
+- Cloud Scheduler nightly job
+- Secret Manager secrets
+- IAM service accounts (least-privilege)
+- Artifact Registry with Docker images
+- CI/CD (GitHub Actions — already configured, no setup needed)
+- Firestore data (seeded fresh)
+
+### Why it works:
+- **All infrastructure is code** — Terraform provisions everything from `main.tf`
+- **All application code is in Git** — clone and build
+- **No manual console steps** — everything is scripted
+- **CI/CD survives** — Workload Identity Federation and GitHub Actions workflows are in the repos
+- **Database is seedable** — `seed-movies` Cloud Run Job populates initial data
+
+---
+
 ## Troubleshooting
 
 | Error | Fix |
