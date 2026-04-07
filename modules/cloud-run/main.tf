@@ -50,6 +50,26 @@ variable "pubsub_subscription" {
   type = string
 }
 
+variable "firebase_secret_name" {
+  type = string
+}
+
+variable "redis_host_secret_name" {
+  type = string
+}
+
+variable "redis_port_secret_name" {
+  type = string
+}
+
+variable "pubsub_topic_secret_name" {
+  type = string
+}
+
+variable "pubsub_subscription_secret_name" {
+  type = string
+}
+
 # Movie Service
 resource "google_cloud_run_v2_service" "movie_service" {
   project  = var.project_id
@@ -76,20 +96,35 @@ resource "google_cloud_run_v2_service" "movie_service" {
         value = "8080"
       }
       env {
-        name  = "GCP_PROJECT_ID"
-        value = var.project_id
-      }
-      env {
-        name  = "REDIS_HOST"
-        value = var.redis_host
-      }
-      env {
-        name  = "REDIS_PORT"
-        value = tostring(var.redis_port)
-      }
-      env {
         name  = "NODE_ENV"
         value = "production"
+      }
+      env {
+        name = "GCP_PROJECT_ID"
+        value_source {
+          secret_key_ref {
+            secret  = var.firebase_secret_name
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "REDIS_HOST"
+        value_source {
+          secret_key_ref {
+            secret  = var.redis_host_secret_name
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "REDIS_PORT"
+        value_source {
+          secret_key_ref {
+            secret  = var.redis_port_secret_name
+            version = "latest"
+          }
+        }
       }
 
       resources {
@@ -151,24 +186,44 @@ resource "google_cloud_run_v2_service" "review_service" {
         value = "8080"
       }
       env {
-        name  = "GCP_PROJECT_ID"
-        value = var.project_id
-      }
-      env {
-        name  = "REDIS_HOST"
-        value = var.redis_host
-      }
-      env {
-        name  = "REDIS_PORT"
-        value = tostring(var.redis_port)
-      }
-      env {
-        name  = "PUBSUB_TOPIC"
-        value = var.pubsub_topic
-      }
-      env {
         name  = "NODE_ENV"
         value = "production"
+      }
+      env {
+        name = "GCP_PROJECT_ID"
+        value_source {
+          secret_key_ref {
+            secret  = var.firebase_secret_name
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "REDIS_HOST"
+        value_source {
+          secret_key_ref {
+            secret  = var.redis_host_secret_name
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "REDIS_PORT"
+        value_source {
+          secret_key_ref {
+            secret  = var.redis_port_secret_name
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "PUBSUB_TOPIC"
+        value_source {
+          secret_key_ref {
+            secret  = var.pubsub_topic_secret_name
+            version = "latest"
+          }
+        }
       }
 
       resources {
@@ -222,16 +277,26 @@ resource "google_cloud_run_v2_service" "review_worker" {
       image = var.review_worker_image
 
       env {
-        name  = "GCP_PROJECT_ID"
-        value = var.project_id
-      }
-      env {
-        name  = "PUBSUB_SUBSCRIPTION"
-        value = var.pubsub_subscription
-      }
-      env {
         name  = "NODE_ENV"
         value = "production"
+      }
+      env {
+        name = "GCP_PROJECT_ID"
+        value_source {
+          secret_key_ref {
+            secret  = var.firebase_secret_name
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "PUBSUB_SUBSCRIPTION"
+        value_source {
+          secret_key_ref {
+            secret  = var.pubsub_subscription_secret_name
+            version = "latest"
+          }
+        }
       }
 
       resources {

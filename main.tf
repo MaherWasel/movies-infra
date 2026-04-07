@@ -17,8 +17,12 @@ module "secret_manager" {
   source              = "./modules/secret-manager"
   project_id          = var.project_id
   firebase_project_id = var.firebase_project_id
+  redis_host          = module.memorystore.redis_host
+  redis_port          = tostring(module.memorystore.redis_port)
+  pubsub_topic        = module.pubsub.topic_name
+  pubsub_subscription = module.pubsub.subscription_name
 
-  depends_on = [module.apis]
+  depends_on = [module.apis, module.memorystore, module.pubsub]
 }
 
 # Firestore database
@@ -75,7 +79,14 @@ module "cloud_run" {
   pubsub_topic            = module.pubsub.topic_name
   pubsub_subscription     = module.pubsub.subscription_name
 
-  depends_on = [module.apis, module.artifact_registry, module.memorystore, module.pubsub, module.iam]
+  # Secret Manager references for Cloud Run env injection
+  firebase_secret_name            = module.secret_manager.firebase_secret_name
+  redis_host_secret_name          = module.secret_manager.redis_host_secret_name
+  redis_port_secret_name          = module.secret_manager.redis_port_secret_name
+  pubsub_topic_secret_name        = module.secret_manager.pubsub_topic_secret_name
+  pubsub_subscription_secret_name = module.secret_manager.pubsub_subscription_secret_name
+
+  depends_on = [module.apis, module.artifact_registry, module.memorystore, module.pubsub, module.iam, module.secret_manager]
 }
 
 # API Gateway
