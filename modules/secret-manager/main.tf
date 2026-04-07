@@ -26,6 +26,11 @@ variable "pubsub_subscription" {
   default = "review-events-sub"
 }
 
+variable "node_env" {
+  type    = string
+  default = "production"
+}
+
 # Firebase project ID
 resource "google_secret_manager_secret" "firebase_project" {
   project   = var.project_id
@@ -99,6 +104,25 @@ resource "google_secret_manager_secret" "pubsub_subscription" {
 resource "google_secret_manager_secret_version" "pubsub_subscription" {
   secret      = google_secret_manager_secret.pubsub_subscription.id
   secret_data = var.pubsub_subscription
+}
+
+# Node environment
+resource "google_secret_manager_secret" "node_env" {
+  project   = var.project_id
+  secret_id = "node-env"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "node_env" {
+  secret      = google_secret_manager_secret.node_env.id
+  secret_data = var.node_env
+}
+
+output "node_env_secret_name" {
+  value = google_secret_manager_secret.node_env.name
 }
 
 output "firebase_secret_name" {

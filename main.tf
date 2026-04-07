@@ -85,6 +85,7 @@ module "cloud_run" {
   redis_port_secret_name          = module.secret_manager.redis_port_secret_name
   pubsub_topic_secret_name        = module.secret_manager.pubsub_topic_secret_name
   pubsub_subscription_secret_name = module.secret_manager.pubsub_subscription_secret_name
+  node_env_secret_name            = module.secret_manager.node_env_secret_name
 
   depends_on = [module.apis, module.artifact_registry, module.memorystore, module.pubsub, module.iam, module.secret_manager]
 }

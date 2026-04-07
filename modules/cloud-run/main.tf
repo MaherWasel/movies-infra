@@ -70,6 +70,10 @@ variable "pubsub_subscription_secret_name" {
   type = string
 }
 
+variable "node_env_secret_name" {
+  type = string
+}
+
 # Movie Service
 resource "google_cloud_run_v2_service" "movie_service" {
   project  = var.project_id
@@ -92,8 +96,13 @@ resource "google_cloud_run_v2_service" "movie_service" {
       }
 
       env {
-        name  = "NODE_ENV"
-        value = "production"
+        name = "NODE_ENV"
+        value_source {
+          secret_key_ref {
+            secret  = var.node_env_secret_name
+            version = "latest"
+          }
+        }
       }
       env {
         name = "GCP_PROJECT_ID"
@@ -178,8 +187,13 @@ resource "google_cloud_run_v2_service" "review_service" {
       }
 
       env {
-        name  = "NODE_ENV"
-        value = "production"
+        name = "NODE_ENV"
+        value_source {
+          secret_key_ref {
+            secret  = var.node_env_secret_name
+            version = "latest"
+          }
+        }
       }
       env {
         name = "GCP_PROJECT_ID"
@@ -269,8 +283,13 @@ resource "google_cloud_run_v2_service" "review_worker" {
       image = var.review_worker_image
 
       env {
-        name  = "NODE_ENV"
-        value = "production"
+        name = "NODE_ENV"
+        value_source {
+          secret_key_ref {
+            secret  = var.node_env_secret_name
+            version = "latest"
+          }
+        }
       }
       env {
         name = "GCP_PROJECT_ID"
@@ -343,8 +362,13 @@ resource "google_cloud_run_v2_job" "seed_movies" {
         command = ["node", "src/seed.js"]
 
         env {
-          name  = "NODE_ENV"
-          value = "production"
+          name = "NODE_ENV"
+          value_source {
+            secret_key_ref {
+              secret  = var.node_env_secret_name
+              version = "latest"
+            }
+          }
         }
         env {
           name = "GCP_PROJECT_ID"
