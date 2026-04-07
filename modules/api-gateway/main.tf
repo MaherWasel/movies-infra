@@ -46,10 +46,11 @@ resource "google_api_gateway_api_config" "movies" {
   }
 }
 
+# API Gateway is not available in all regions; use a supported one
 resource "google_api_gateway_gateway" "movies" {
   provider   = google-beta
   project    = var.project_id
-  region     = var.region
+  region     = "europe-west1"
   api_config = google_api_gateway_api_config.movies.id
   gateway_id = "movies-gateway"
 }
