@@ -26,7 +26,7 @@ gcloud firestore databases delete --database="(default)" --project=$PROJECT --qu
 # 4. Delete local repos
 echo "--- Deleting local repos..."
 cd "$ROOT_DIR/.."
-rm -rf movies-movie-service movies-review-service movies-infra movies-frontend
+rm -rf movies-movie-service movies-review-service movies-infra
 
 echo ""
 echo "=== Destroy Complete — everything is gone ==="
