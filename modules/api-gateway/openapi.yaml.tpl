@@ -30,12 +30,16 @@ paths:
         - firebase: []
       x-google-backend:
         address: ${movie_service_url}/movies
+        disable_auth: true
       responses:
         200:
           description: OK
     options:
       summary: CORS preflight
       operationId: corsMovies
+      x-google-backend:
+        address: ${movie_service_url}/movies
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -52,8 +56,9 @@ paths:
           required: true
           type: string
       x-google-backend:
-        address: ${movie_service_url}/movies
+        address: ${movie_service_url}
         path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -65,6 +70,10 @@ paths:
           in: path
           required: true
           type: string
+      x-google-backend:
+        address: ${movie_service_url}
+        path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -81,8 +90,9 @@ paths:
           required: true
           type: string
       x-google-backend:
-        address: ${review_service_url}/movies
+        address: ${review_service_url}
         path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         201:
           description: Created
@@ -94,6 +104,10 @@ paths:
           in: path
           required: true
           type: string
+      x-google-backend:
+        address: ${review_service_url}
+        path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -110,8 +124,9 @@ paths:
           required: true
           type: string
       x-google-backend:
-        address: ${review_service_url}/movies
+        address: ${review_service_url}
         path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         201:
           description: Created
@@ -123,6 +138,10 @@ paths:
           in: path
           required: true
           type: string
+      x-google-backend:
+        address: ${review_service_url}
+        path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -140,6 +159,7 @@ paths:
           type: string
       x-google-backend:
         address: ${review_service_url}/reviews
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -150,12 +170,16 @@ paths:
         - firebase: []
       x-google-backend:
         address: ${review_service_url}/reviews
+        disable_auth: true
       responses:
         201:
           description: Created
     options:
       summary: CORS preflight
       operationId: corsReviews
+      x-google-backend:
+        address: ${review_service_url}/reviews
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -172,8 +196,9 @@ paths:
           required: true
           type: string
       x-google-backend:
-        address: ${review_service_url}/reviews
+        address: ${review_service_url}
         path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -185,6 +210,10 @@ paths:
           in: path
           required: true
           type: string
+      x-google-backend:
+        address: ${review_service_url}
+        path_translation: APPEND_PATH_TO_ADDRESS
+        disable_auth: true
       responses:
         200:
           description: OK
@@ -195,6 +224,7 @@ paths:
       operationId: healthCheck
       x-google-backend:
         address: ${movie_service_url}/health
+        disable_auth: true
       responses:
         200:
           description: OK
